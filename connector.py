@@ -99,6 +99,7 @@ def fetch_alarms(camera_list, browser):
                     "camera_name": camera_name or splitted_text[3],
                 }
                 found_signals[splitted_text[0]] = data
+                # TODO: Send the data to Telegram
                 print(f"New Alarm: {data}")
             else:
                 pass

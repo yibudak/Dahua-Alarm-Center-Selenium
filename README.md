@@ -1,4 +1,4 @@
-# Dahua-Alarm-Center-Selenium
+# Dahua Alarm Center Selenium
 
 ## Overview
 "Dahua-Alarm-Center-Selenium" is a Python script developed to automate the process of monitoring and logging alarms from the Dahua Alarm Center using Selenium WebDriver. The script is designed to log in to the Dahua Alarm Center, navigate to the alarm center, enable alarm tracking, fetch alarms, and print new alarms' data.
