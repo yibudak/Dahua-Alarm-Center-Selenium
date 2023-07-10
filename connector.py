@@ -4,18 +4,21 @@ from selenium.webdriver.common.by import By
 import argparse
 import json
 import time
+import httpx
 
 """
 Yiğit Budak (https://github.com/yibudak/Dahua-Alarm-Center-Selenium)
 Dahua Alarm Center Telegram Connector
 """
 
-
+UserAgent = (
+    "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; Touch; rv:11.0) like Gecko"
+)
 options = Options()
 # Dahua Alarm Center only works with Internet Explorer
 options.set_preference(
     "general.useragent.override",
-    "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; Touch; rv:11.0) like Gecko",
+    UserAgent,
 )
 
 
@@ -82,12 +85,52 @@ def enable_alarm_tracking(browser):
     return True
 
 
+def check_session_status(browser):
+    """
+    Check Session Status
+    :param browser: selenium.webdriver
+    :return: Boolean
+    """
+    data = {
+        "method": "global.keepAlive",
+        "params": {"timeout": 300, "active": True},
+        "session": None,
+        "id": 100,
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": UserAgent,
+        "X-Request": "JSON",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+
+    cookies = {cookie["name"]: cookie["value"] for cookie in browser.get_cookies()}
+    data["session"] = cookies["DhWebClientSessionID"]
+    resp = httpx.post(
+        f"{browser.current_url}RPC2",
+        cookies=cookies,
+        json=data,
+        timeout=5,
+        headers=headers,
+        verify=False,  # Ignore SSL
+    )
+    return resp.status_code == 200
+
+
 def fetch_alarms(camera_list, browser):
     """Fetch Alarms"""
+
     found_signals = {}
     alarm_frame = browser.find_element(By.XPATH, "//iframe[@id='alarm_frame']")
     browser.switch_to.frame(alarm_frame)
+    iteration = 0
+
     while True:
+        # Check session status every 10 iterations
+        if iteration % 10 == 0 and not check_session_status(browser):
+            # If session is expired, restart the whole process
+            return False
+
         signals = browser.find_elements(By.XPATH, "//div")
         for signal in signals:
             splitted_text = signal.text.split("\n")
@@ -101,13 +144,13 @@ def fetch_alarms(camera_list, browser):
                 found_signals[splitted_text[0]] = data
                 # TODO: Send the data to Telegram
                 print(f"New Alarm: {data}")
-            else:
-                pass
-            if len(found_signals) >= 50:
-                # If there are more than 50 alarms, restart the whole process
-                return True
+
+        if len(found_signals) >= 50:
+            # If there are more than 50 alarms, restart the whole process
+            return True
 
         time.sleep(3)  # Slow down the loop to avoid overloading the server
+        iteration += 1
 
 
 def main(host, username, password, camera_list):
