@@ -106,14 +106,19 @@ def check_session_status(browser):
 
     cookies = {cookie["name"]: cookie["value"] for cookie in browser.get_cookies()}
     data["session"] = cookies["DhWebClientSessionID"]
-    resp = httpx.post(
-        f"{browser.current_url}RPC2",
-        cookies=cookies,
-        json=data,
-        timeout=5,
-        headers=headers,
-        verify=False,  # Ignore SSL
-    )
+    try:
+        resp = httpx.post(
+            f"{browser.current_url}RPC2",
+            cookies=cookies,
+            json=data,
+            timeout=5,
+            headers=headers,
+            verify=False,  # Ignore SSL
+        )
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        print(f"HTTP Error: {exc}")
+        return False
     return resp.status_code == 200
 
 
