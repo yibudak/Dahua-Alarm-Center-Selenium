@@ -36,7 +36,7 @@ You can run the script with required arguments: host, username, password, and ca
 Example:
 
 ```
-python3 connector.py --host yourHost --username yourUsername --password yourPassword --camera-list cameraList.json
+python3 connector.py --host yourHost --username yourUsername --password yourPassword --camera-list cameraList.json --bot-token "BOT_TOKEN" --chat-id "CHAT_ID"
 ```
 
 ## Required Arguments
@@ -45,6 +45,8 @@ python3 connector.py --host yourHost --username yourUsername --password yourPass
 - **--username**: The username used for login.
 - **--password**: The password used for login.
 - **--camera-list**: The list of cameras to monitor in JSON format.
+- **--bot-token**: Telegram bot token.
+- **--chat-id**: Telegram chat id where to send notifications.
 
 ## Dependencies
 
