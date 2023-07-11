@@ -37,11 +37,13 @@ def login(host, browser, username, password):
     browser.get(f"http://{host}")
     try:
         # Username
-        username_field = browser.find_element(By.XPATH, "//input[@id='username']")
+        username_field = browser.find_element(
+            By.XPATH, "//input[@id='username']")
         username_field.clear()
         username_field.send_keys(username)
         # Password
-        password_field = browser.find_element(By.XPATH, "//input[@id='password']")
+        password_field = browser.find_element(
+            By.XPATH, "//input[@id='password']")
         password_field.clear()
         password_field.send_keys(password)
         # Login
@@ -59,7 +61,8 @@ def navigate_to_alarm_center(browser):
     """Navigate to Alarm Center"""
     try:
         # Alarm Center
-        alarm_center_button = browser.find_element(By.XPATH, "//a[@id='xbjsz']")
+        alarm_center_button = browser.find_element(
+            By.XPATH, "//a[@id='xbjsz']")
         alarm_center_button.click()
         time.sleep(3)
     except Exception as e:
@@ -104,7 +107,8 @@ def check_session_status(browser):
         "X-Requested-With": "XMLHttpRequest",
     }
 
-    cookies = {cookie["name"]: cookie["value"] for cookie in browser.get_cookies()}
+    cookies = {cookie["name"]: cookie["value"]
+               for cookie in browser.get_cookies()}
     data["session"] = cookies["DhWebClientSessionID"]
     try:
         resp = httpx.post(
@@ -122,7 +126,7 @@ def check_session_status(browser):
     return resp.status_code == 200
 
 
-def fetch_alarms(camera_list, browser):
+def fetch_alarms(camera_list, browser, bot_token, chat_id):
     """Fetch Alarms"""
 
     found_signals = {}
@@ -147,8 +151,8 @@ def fetch_alarms(camera_list, browser):
                     "camera_name": camera_name or splitted_text[3],
                 }
                 found_signals[splitted_text[0]] = data
-                # TODO: Send the data to Telegram
-                print(f"New Alarm: {data}")
+                # Send the data to Telegram
+                send_telegram_message(bot_token, chat_id, data)
 
         if len(found_signals) >= 50:
             # If there are more than 50 alarms, restart the whole process
@@ -158,7 +162,21 @@ def fetch_alarms(camera_list, browser):
         iteration += 1
 
 
-def main(host, username, password, camera_list):
+def send_telegram_message(bot_token, chat_id, data):
+    """Send a message via Telegram Bot"""
+    base_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+
+    message = f"{data['alarm_type']} in {data['camera_name']} at {data['date']}"
+
+    payload = {"chat_id": chat_id, "text": message}
+
+    with httpx.Client() as client:
+        response = client.post(base_url, json=payload)
+
+    return response.status_code, response.json()
+
+
+def main(host, username, password, camera_list, bot_token, chat_id):
     # Load the items
     try:
         json_file = open(camera_list, "r")
@@ -177,7 +195,8 @@ def main(host, username, password, camera_list):
         login(host, driver, username, password)
         navigate_to_alarm_center(driver)
         enable_alarm_tracking(driver)
-        fetch_alarms(camera_list=loaded_camera_list, browser=driver)
+        fetch_alarms(camera_list=loaded_camera_list, browser=driver,
+                     bot_token=bot_token, chat_id=chat_id)
         time.sleep(3)  # Slow down the loop to avoid overloading the server
 
 
@@ -209,5 +228,18 @@ if __name__ == "__main__":
         help="List of cameras to monitor (JSON)",
         required=True,
     )
+    parser.add_argument(
+        "--bot-token",
+        type=str,
+        help="Telegram bot token",
+        required=True,
+    )
+    parser.add_argument(
+        "--chat-id",
+        type=str,
+        help="Telegram chat id where to send notifications",
+        required=True,
+    )
     args = parser.parse_args()
-    main(args.host, args.username, args.password, args.camera_list)
+    main(args.host, args.username, args.password,
+         args.camera_list, args.bot_token, args.chat_id)
