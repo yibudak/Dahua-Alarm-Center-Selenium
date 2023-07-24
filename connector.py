@@ -22,6 +22,7 @@ options.set_preference(
     "general.useragent.override",
     UserAgent,
 )
+options.add_argument("--headless")
 
 
 def load_camera_list(camera_list):
